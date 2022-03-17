@@ -15,11 +15,31 @@
         "src/c/bzip2/blocksort.c",
         "src/c/bzip2/huffman.c",
         "src/c/bzip2/decompress.c"
-      ],      
+      ],
       "include_dirs": [
         "include", "./src/c/bzip2",
-        "<!(node -e \"require('nan')\")"
-      ]      
+        "<!(node -p \"require('node-addon-api').include_dir\")"
+      ],
+      "dependencies": [
+        "<!(node -p \"require('node-addon-api').gyp\")"
+      ],
+      "cflags!": ["-fno-exceptions"],
+      "cflags_cc!": ["-fno-exceptions"],
+      "defines": [
+          "UNICODE",
+          "_UNICODE",
+          "NAPI_VERSION=<(napi_build_version)"
+      ],
+      "msvs_settings": {
+          "VCCLCompilerTool": {
+              "ExceptionHandling": 1
+          }
+      },
+      "msbuild_settings": {
+        "ClCompile": {
+          "AdditionalOptions": ["-std:c++17"]
+        }
+      }
     }
   ]
 }

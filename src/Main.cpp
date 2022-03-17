@@ -1,4 +1,4 @@
-#include <node.h>
+#include <napi.h>
 #include "DiffWorkerCallback.hpp"
 #include "PatchWorkerCallback.hpp"
 
@@ -8,112 +8,93 @@ extern "C" {
 }
 
 namespace bsdpNode {
-  using namespace v8;
-
-  void diff(const FunctionCallbackInfo<Value>& args)
+  Napi::Value diff(const Napi::CallbackInfo& info)
   {
-    if(args.Length() < 4 || !args[0]->IsString() || !args[1]->IsString() || !args[2]->IsString())
+    if(info.Length() < 4 || !info[0].IsString() || !info[1].IsString() || !info[2].IsString())
     {
-      Nan::ThrowError("Invalid arguments.");
-      return;
+      throw Napi::Error::New(info.Env(), "Expected parameters: srcFile, dstFile, patchFile, callback");
     }
 
-    Nan::Callback *callback = new Nan::Callback(args[3].As<v8::Function>());
-
-    Nan::Utf8String param0(args[0]);
-    std::string oldfile = std::string(*param0);
-
-    Nan::Utf8String param1(args[1]);
-    std::string newfile = std::string(*param1);
-
-    Nan::Utf8String param2(args[2]);
-    std::string patchfile = std::string(*param2);
+    std::string oldfile(info[0].ToString());
+    std::string newfile(info[1].ToString());
+    std::string patchfile(info[2].ToString());
+    Napi::Function callback = info[3].As<Napi::Function>();
 
     DiffWorkerCallback* wc = new DiffWorkerCallback(callback, oldfile, newfile, patchfile);
-    Nan::AsyncQueueWorker(wc);
+    wc->Queue();
+    return info.Env().Undefined();
   }
 
-  void diffSync(const FunctionCallbackInfo<Value>& args)
+  Napi::Value diffSync(const Napi::CallbackInfo& info)
   {
-    Isolate* isolate = args.GetIsolate();
-    HandleScope scope(isolate);
-
-    if (!args[0]->IsString() || !args[1]->IsString() || !args[2]->IsString())
+    if(info.Length() < 3 || !info[0].IsString() || !info[1].IsString() || !info[2].IsString())
     {
-      Nan::ThrowError("Invalid arguments.");
-      return;
+      throw Napi::Error::New(info.Env(), "Expected parameters: srcFile, dstFile, patchFile");
     }
 
-    Nan::Utf8String oldfile(args[0]);
-    Nan::Utf8String newfile(args[1]);
-    Nan::Utf8String patchfile(args[2]);
-
+    std::string oldfile(info[0].ToString());
+    std::string newfile(info[1].ToString());
+    std::string patchfile(info[2].ToString());
 
     char error[1024];
     memset(error, 0, sizeof error);
 
-    int ret = bsdiff(error, *oldfile, *newfile, *patchfile, nullptr, nullptr);
+    int ret = bsdiff(error, oldfile.c_str(), newfile.c_str(), patchfile.c_str(), nullptr, nullptr);
 
-    if(ret != 0)
-      Nan::ThrowError(error);
+    if (ret != 0) {
+      throw Napi::Error::New(info.Env(), error);
+    }
+    return info.Env().Undefined();
   }
 
-  void patch(const FunctionCallbackInfo<Value>& args)
+  Napi::Value patch(const Napi::CallbackInfo& info)
   {
-    if(args.Length() < 4 || !args[0]->IsString() || !args[1]->IsString() || !args[2]->IsString())
+    if(info.Length() < 4 || !info[0].IsString() || !info[1].IsString() || !info[2].IsString())
     {
-      Nan::ThrowError("Invalid arguments.");
-      return;
+      throw Napi::Error::New(info.Env(), "Expected parameters: srcFile, dstFile, patchFile, callback");
     }
 
-    Nan::Callback *callback = new Nan::Callback(args[3].As<v8::Function>());
-
-    Nan::Utf8String param0(args[0]);
-    std::string oldfile = std::string(*param0);
-
-    Nan::Utf8String param1(args[1]);
-    std::string newfile = std::string(*param1);
-
-    Nan::Utf8String param2(args[2]);
-    std::string patchfile = std::string(*param2);
+    std::string oldfile(info[0].ToString());
+    std::string newfile(info[1].ToString());
+    std::string patchfile(info[2].ToString());
+    Napi::Function callback = info[3].As<Napi::Function>();
 
     PatchWorkerCallback* wc = new PatchWorkerCallback(callback, oldfile, newfile, patchfile);
-    Nan::AsyncQueueWorker(wc);
+    wc->Queue();
+    return info.Env().Undefined();
   }
 
-  void patchSync(const FunctionCallbackInfo<Value>& args)
+  Napi::Value patchSync(const Napi::CallbackInfo& info)
   {
-    Isolate* isolate = args.GetIsolate();
-    HandleScope scope(isolate);
-
-    if (!args[0]->IsString() || !args[1]->IsString() || !args[2]->IsString())
+    if(info.Length() < 3 || !info[0].IsString() || !info[1].IsString() || !info[2].IsString())
     {
-      Nan::ThrowError("Invalid arguments.");
-      return;
+      throw Napi::Error::New(info.Env(), "Expected parameters: srcFile, dstFile, patchFile");
     }
 
-    Nan::Utf8String oldfile(args[0]);
-    Nan::Utf8String newfile(args[1]);
-    Nan::Utf8String patchfile(args[2]);
+    std::string oldfile(info[0].ToString());
+    std::string newfile(info[1].ToString());
+    std::string patchfile(info[2].ToString());
 
     char error[1024];
     memset(error, 0, sizeof error);
 
-    int ret = bspatch(error, *oldfile, *newfile, *patchfile, nullptr, nullptr);
+    int ret = bspatch(error, oldfile.c_str(), newfile.c_str(), patchfile.c_str(), nullptr, nullptr);
 
-    if(ret != 0)
-      Nan::ThrowError(error);
+    if (ret != 0) {
+      throw Napi::Error::New(info.Env(), error);
+    }
+    return info.Env().Undefined();
   }
 
-  void init(Local<Object> exports) {
-    NODE_SET_METHOD(exports, "diff", diff);
-    NODE_SET_METHOD(exports, "diffSync", diffSync);
+  Napi::Object Init(Napi::Env env, Napi::Object exports) {
+    exports.Set("diff", Napi::Function::New(env, diff));
+    exports.Set("diffSync", Napi::Function::New(env, diffSync));
 
-    NODE_SET_METHOD(exports, "patch", patch);
-    NODE_SET_METHOD(exports, "patchSync", patchSync);
+    exports.Set("patch", Napi::Function::New(env, patch));
+    exports.Set("patchSync", Napi::Function::New(env, patchSync));
+
+    return exports;
   }
 
-  NODE_MODULE_INIT() {
-    init(exports);
-  }
+  NODE_API_MODULE(bsdiff, Init)
 }

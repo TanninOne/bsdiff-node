@@ -1,23 +1,23 @@
 #ifndef DiffWorkerCallback_H
 #define DiffWorkerCallback_H
 
-#include <nan.h>
+#include <napi.h>
 #include <sys/types.h>
 
 struct DiffWorkerData {
     int percentage;
-    const Nan::AsyncBareProgressWorker<int>::ExecutionProgress* progressWorker;
+    const Napi::AsyncProgressWorker<int>::ExecutionProgress* progressWorker;
 };
 
-class DiffWorkerCallback : public Nan::AsyncProgressWorkerBase<int> 
+class DiffWorkerCallback : public Napi::AsyncProgressWorker<int> 
 {
 public:
-    DiffWorkerCallback(Nan::Callback *callback, const std::string& oldfile, const std::string& newfile, const std::string& patchfile);
+    DiffWorkerCallback(const Napi::Function& callback, const std::string& oldfile, const std::string& newfile, const std::string& patchfile);
     ~DiffWorkerCallback();
 
-    virtual void Execute(const ExecutionProgress& progress);
-    virtual void HandleProgressCallback(const int* data, size_t count);
-    virtual void HandleOKCallback();
+    virtual void Execute(const ExecutionProgress& progress) override;
+    virtual void OnProgress(const int* data, size_t count) override;
+    virtual void OnOK() override;
 
 private:
     static void CCallback(off_t current, off_t total, void* data)

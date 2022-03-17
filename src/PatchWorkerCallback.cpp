@@ -6,8 +6,8 @@ extern "C" {
 }
 
 // Public
-PatchWorkerCallback::PatchWorkerCallback(Nan::Callback *callback, const std::string& oldfile, const std::string& newfile, const std::string& patchfile)
-    : AsyncProgressWorkerBase(callback)
+PatchWorkerCallback::PatchWorkerCallback(const Napi::Function& callback, const std::string& oldfile, const std::string& newfile, const std::string& patchfile)
+    : AsyncProgressWorker(callback)
 {
   _oldfile = oldfile;
   _newfile = newfile;
@@ -30,26 +30,21 @@ void PatchWorkerCallback::Execute(const ExecutionProgress& progress)
     _error = error;
 }
 
-void PatchWorkerCallback::HandleProgressCallback(const int* data, size_t count)
+void PatchWorkerCallback::OnProgress(const int* data, size_t count)
 {
     if(data != nullptr)
     {
-        Nan::HandleScope scope;
-        v8::Local<v8::Value> argv[] = {
-            v8::Number::New(v8::Isolate::GetCurrent(), *data),
-            Nan::New<v8::String>(_error.c_str()).ToLocalChecked()
-        };
-
-        callback->Call(2, argv, this->async_resource);
+      Callback().Call(Receiver().Value(), std::initializer_list<napi_value>{
+        Napi::Value::From(Env(), *data),
+          Napi::String::From(Env(), _error)
+      });
     }
 }
 
-void PatchWorkerCallback::HandleOKCallback()
+void PatchWorkerCallback::OnOK()
 {
-    v8::Local<v8::Value> argv[] = {
-        v8::Number::New(v8::Isolate::GetCurrent(), 100),
-        Nan::New<v8::String>(_error.c_str()).ToLocalChecked()
-    };
-    callback->Call(2, argv, this->async_resource);
+  Callback().Call(Receiver().Value(), std::initializer_list<napi_value>{
+    Napi::Value::From(Env(), 100),
+      Napi::String::From(Env(), _error)
+  });
 }
-

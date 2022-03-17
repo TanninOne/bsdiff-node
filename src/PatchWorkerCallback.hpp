@@ -1,23 +1,23 @@
 #ifndef PatchWorkerCallback_H
 #define PatchWorkerCallback_H
 
-#include <nan.h>
+#include <napi.h>
 #include <sys/types.h>
 
 struct PatchWorkerData {
     int percentage;
-    const Nan::AsyncBareProgressWorker<int>::ExecutionProgress* progressWorker;
+    const Napi::AsyncProgressWorker<int>::ExecutionProgress* progressWorker;
 };
 
-class PatchWorkerCallback : public Nan::AsyncProgressWorkerBase<int> 
+class PatchWorkerCallback : public Napi::AsyncProgressWorker<int> 
 {
 public:
-    PatchWorkerCallback(Nan::Callback *callback, const std::string& oldfile, const std::string& newfile, const std::string& patchfile);
+    PatchWorkerCallback(const Napi::Function& callback, const std::string& oldfile, const std::string& newfile, const std::string& patchfile);
     ~PatchWorkerCallback();
 
-    virtual void Execute(const ExecutionProgress& progress);
-    virtual void HandleProgressCallback(const int* data, size_t count);
-    virtual void HandleOKCallback();
+    virtual void Execute(const ExecutionProgress& progress) override;
+    virtual void OnProgress(const int* data, size_t count) override;
+    virtual void OnOK() override;
 
 private:
     static void CCallback(off_t current, off_t total, void* data)

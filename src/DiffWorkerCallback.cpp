@@ -6,8 +6,8 @@ extern "C" {
 }
 
 // Public
-DiffWorkerCallback::DiffWorkerCallback(Nan::Callback *callback, const std::string& oldfile, const std::string& newfile, const std::string& patchfile)
-    : AsyncProgressWorkerBase(callback)
+DiffWorkerCallback::DiffWorkerCallback(const Napi::Function& callback, const std::string& oldfile, const std::string& newfile, const std::string& patchfile)
+    : Napi::AsyncProgressWorker<int>(callback)
 {
   _oldfile = oldfile;
   _newfile = newfile;
@@ -17,39 +17,34 @@ DiffWorkerCallback::DiffWorkerCallback(Nan::Callback *callback, const std::strin
 DiffWorkerCallback::~DiffWorkerCallback()
 {   }
 
-void DiffWorkerCallback::Execute(const ExecutionProgress& progress)
+void DiffWorkerCallback::Execute(const Napi::AsyncProgressWorker<int>::ExecutionProgress & progress)
 {
-    char error[1024];
-    memset(error, 0, sizeof error);
+  char error[1024];
+  memset(error, 0, sizeof error);
 
-    DiffWorkerData data;
-    data.percentage = 0;
-    data.progressWorker = &progress;
+  DiffWorkerData data;
+  data.percentage = 0;
+  data.progressWorker = &progress;
 
-    bsdiff(error, _oldfile.c_str(), _newfile.c_str(), _patchfile.c_str(), &data, &DiffWorkerCallback::CCallback);
-    _error = error;
+  bsdiff(error, _oldfile.c_str(), _newfile.c_str(), _patchfile.c_str(), &data, &DiffWorkerCallback::CCallback);
+  _error = error;
 }
 
-void DiffWorkerCallback::HandleProgressCallback(const int* data, size_t count)
+void DiffWorkerCallback::OnProgress(const int* data, size_t count)
 {
-    if(data != nullptr)
-    {
-        Nan::HandleScope scope;
-        v8::Local<v8::Value> argv[] = {
-            v8::Number::New(v8::Isolate::GetCurrent(), *data),
-            Nan::New<v8::String>(_error.c_str()).ToLocalChecked()
-        };
-
-        callback->Call(2, argv, this->async_resource);
-    }
+  if (data != nullptr)
+  {
+    Callback().Call(Receiver().Value(), std::initializer_list<napi_value>{
+      Napi::Value::From(Env(), *data),
+        Napi::String::From(Env(), _error)
+    });
+  }
 }
 
-void DiffWorkerCallback::HandleOKCallback()
+void DiffWorkerCallback::OnOK()
 {
-    v8::Local<v8::Value> argv[] = {
-        v8::Number::New(v8::Isolate::GetCurrent(), 100),
-        Nan::New<v8::String>(_error.c_str()).ToLocalChecked()
-    };
-    callback->Call(2, argv, this->async_resource);
+  Callback().Call(Receiver().Value(), std::initializer_list<napi_value>{
+    Napi::Value::From(Env(), 100),
+      Napi::String::From(Env(), _error)
+  });
 }
-
