@@ -16,6 +16,13 @@
         "src/c/bzip2/huffman.c",
         "src/c/bzip2/decompress.c"
       ],
+      "conditions": [
+        ['OS=="win"', {
+          "libraries": [
+            "-DelayLoad:node.exe"
+          ]
+        }]
+      ],
       "include_dirs": [
         "include", "./src/c/bzip2",
         "<!(node -p \"require('node-addon-api').include_dir\")"
